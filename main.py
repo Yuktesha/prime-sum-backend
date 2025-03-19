@@ -43,10 +43,13 @@ def search():
     """API endpoint for searching prime numbers"""
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({'error': '無效的請求數據'}), 400
+
         start = int(data.get('start', 2))
         end = int(data.get('end', 100))
         min_sequences = int(data.get('min_sequences', 1))
-        max_sequences = data.get('max_sequences')  # 可以是 None
+        max_sequences = data.get('max_sequences', -1)  # -1 表示無限制
         min_length = int(data.get('min_length', 1))
         max_length = int(data.get('max_length', 10))
 
@@ -57,7 +60,7 @@ def search():
             return jsonify({'error': '請輸入有效的序列長度範圍'}), 400
         if min_sequences < 1:
             return jsonify({'error': '最小序列數量必須大於0'}), 400
-        if max_sequences is not None and max_sequences < min_sequences:
+        if max_sequences != -1 and max_sequences < min_sequences:
             return jsonify({'error': '最大序列數量必須大於或等於最小序列數量'}), 400
 
         # 找出範圍內的所有質數
@@ -73,14 +76,20 @@ def search():
             
             # 根據序列數量過濾結果
             if len(sequences) >= min_sequences:
-                if max_sequences is None or len(sequences) <= max_sequences:
-                    results.append({
-                        'prime': prime,
-                        'sequences': sequences
-                    })
+                if max_sequences == -1 or len(sequences) <= max_sequences:
+                    for seq in sequences:
+                        results.append({
+                            'sum': prime,
+                            'sequence': seq
+                        })
 
-        return jsonify(results)
+        # 按照前端期望的格式返回結果
+        return jsonify({
+            'results': results
+        })
 
+    except ValueError as e:
+        return jsonify({'error': '請輸入有效的數值'}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
