@@ -4,7 +4,14 @@ import math
 from typing import List, Dict, Optional
 
 app = Flask(__name__)
-CORS(app)  # 允許跨域請求
+# 配置 CORS，允許所有來源
+CORS(app, resources={
+    r"/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    }
+})
 
 def is_prime(n: int) -> bool:
     """判斷一個數是否為質數"""
@@ -46,20 +53,25 @@ def search():
         if not data:
             return jsonify({'error': '無效的請求數據'}), 400
 
+        # 從請求中獲取參數，使用預設值
         start = int(data.get('start', 2))
         end = int(data.get('end', 100))
         min_sequences = int(data.get('min_sequences', 1))
-        max_sequences = data.get('max_sequences', -1)  # -1 表示無限制
+        max_sequences = int(data.get('max_sequences', -1)) if data.get('max_sequences') != '∞' else -1
         min_length = int(data.get('min_length', 1))
         max_length = int(data.get('max_length', 10))
 
         # 驗證輸入
-        if start < 2 or end < start:
-            return jsonify({'error': '請輸入有效的搜尋範圍'}), 400
-        if min_length < 1 or max_length < min_length:
-            return jsonify({'error': '請輸入有效的序列長度範圍'}), 400
+        if start < 2:
+            return jsonify({'error': '起始值必須大於或等於 2'}), 400
+        if end < start:
+            return jsonify({'error': '結束值必須大於起始值'}), 400
+        if min_length < 1:
+            return jsonify({'error': '最小序列長度必須大於 0'}), 400
+        if max_length < min_length:
+            return jsonify({'error': '最大序列長度必須大於或等於最小序列長度'}), 400
         if min_sequences < 1:
-            return jsonify({'error': '最小序列數量必須大於0'}), 400
+            return jsonify({'error': '最小序列數量必須大於 0'}), 400
         if max_sequences != -1 and max_sequences < min_sequences:
             return jsonify({'error': '最大序列數量必須大於或等於最小序列數量'}), 400
 
@@ -91,8 +103,8 @@ def search():
     except ValueError as e:
         return jsonify({'error': '請輸入有效的數值'}), 400
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        app.logger.error(f'Error in search endpoint: {str(e)}')
+        return jsonify({'error': f'服務器錯誤：{str(e)}'}), 500
 
 if __name__ == '__main__':
-    # 在生產環境中，我們會使用 gunicorn
     app.run(host='0.0.0.0', port=5000)
